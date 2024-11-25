@@ -12,11 +12,20 @@ const router = useRouter()
 
 const synth = window.speechSynthesis
 
+if (localStorage.getItem('rate') == null) {
+  localStorage.setItem('rate', 10)
+}
+
 const chapter = ref({ title: '', content: '' })
 const drawerVisible = ref(false)
+const speakingParagraph = ref(-1)
+const rate = ref(parseFloat(localStorage.getItem('rate')))
 
 const paragraphs = computed(() => {
-  return chapter.value.content.split('\n').map((p) => p.trim())
+  return chapter.value.content
+    .split('\n')
+    .map((p) => p.trim())
+    .filter((p) => p)
 })
 
 const previousPage = () => {
@@ -36,21 +45,26 @@ const getChapterData = async (bookId, chapterId) => {
   })
 }
 
+const updateRate = (r) => {
+  rate.value = r
+  localStorage.setItem('rate', rate.value)
+}
 function startSpeechSynthesis(index) {
-  console.log(synth.paused, synth.speaking)
-  if (synth.paused) {
-    synth.resume()
-    return
-  } else if (synth.speaking) {
+  if (synth.speaking) {
     synth.cancel()
+    speakingParagraph.value = -1
     return
   }
   const voice = synth.getVoices().filter((voice) => voice.lang == 'zh-TW')[0]
   try {
-    for (const paragraph of paragraphs.value.slice(index)) {
+    for (const [i, paragraph] of paragraphs.value.slice(index).entries()) {
       let utterance = new SpeechSynthesisUtterance(paragraph)
       utterance.lang = 'zh-TW'
       utterance.voice = voice
+      utterance.rate = rate.value / 10
+      utterance.onstart = () => {
+        speakingParagraph.value = i + index
+      }
       synth.speak(utterance)
     }
   } catch (err) {
@@ -62,6 +76,7 @@ watch(
   [() => route.params.bookId, () => route.params.chapterId],
   async ([newBookId, newChapterId]) => {
     synth.cancel()
+    speakingParagraph.value = -1
     getChapterData(parseInt(newBookId), parseInt(newChapterId))
     db.books.update(parseInt(newBookId), { currentChapter: parseInt(newChapterId) })
     window.scrollTo(0, 0)
@@ -69,6 +84,7 @@ watch(
 )
 onMounted(async () => {
   synth.cancel()
+  speakingParagraph.value = -1
   getChapterData(parseInt(route.params.bookId), parseInt(route.params.chapterId))
   db.books.update(parseInt(route.params.bookId), {
     currentChapter: parseInt(route.params.chapterId),
@@ -89,12 +105,13 @@ onMounted(async () => {
   <div class="m-4 text-2xl">
     <p
       v-for="(paragraph, index) in paragraphs"
-      class="indent-8 my-6 select-none"
+      class="indent-8 my-6 select-none cursor-pointer"
       @click="startSpeechSynthesis(index)"
     >
-      <mark class="bg-transparent text-white hover:bg-sky-800 hover:cursor-pointer">
-        {{ paragraph }}
-      </mark>
+      <span v-if="speakingParagraph != index">{{ paragraph }}</span>
+      <span v-else>
+        <mark class="text-white bg-sky-800">{{ paragraph }}</mark>
+      </span>
     </p>
   </div>
   <div class="flex justify-between m-2">
@@ -104,10 +121,11 @@ onMounted(async () => {
   <div class="w-full h-20"></div>
 
   <Drawer v-model:visible="drawerVisible" position="bottom" header="Speech" :modal="false">
-    <div class="flex gap-2">
-      <Button icon="pi pi-play" severity="secondary" rounded @click="startSpeechSynthesis(0)" />
-      <Button icon="pi pi-pause" severity="secondary" rounded @click="synth.pause()" />
-      <Button icon="pi pi-stop" severity="secondary" rounded @click="synth.cancel()" />
+    <div class="flex gap-4 items-center">
+      <span class="text-xl">Rate:</span>
+      <Button icon="pi pi-minus" severity="secondary" rounded @click="updateRate(rate - 1)" />
+      <span class="text-xl">{{ rate / 10 }}</span>
+      <Button icon="pi pi-plus" severity="secondary" rounded @click="updateRate(rate + 1)" />
     </div>
   </Drawer>
 
