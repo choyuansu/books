@@ -20,6 +20,7 @@ const chapter = ref({ title: '', content: '' })
 const drawerVisible = ref(false)
 const speakingParagraph = ref(-1)
 const rate = ref(parseFloat(localStorage.getItem('rate')))
+const paragraphRefs = ref([])
 
 const paragraphs = computed(() => {
   return chapter.value.content
@@ -64,6 +65,7 @@ function startSpeechSynthesis(index) {
       utterance.rate = rate.value / 10
       utterance.onstart = () => {
         speakingParagraph.value = i + index
+        paragraphRefs.value[i + index].scrollIntoView({ behavior: 'smooth' })
       }
       synth.speak(utterance)
     }
@@ -105,6 +107,11 @@ onMounted(async () => {
   <div class="m-4 text-2xl">
     <p
       v-for="(paragraph, index) in paragraphs"
+      :ref="
+        (el) => {
+          paragraphRefs[index] = el
+        }
+      "
       class="indent-8 my-6 select-none cursor-pointer"
       @click="startSpeechSynthesis(index)"
     >
