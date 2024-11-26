@@ -65,7 +65,7 @@ function startSpeechSynthesis(index) {
       utterance.rate = rate.value / 10
       utterance.onstart = () => {
         speakingParagraph.value = i + index
-        paragraphRefs.value[i + index].scrollIntoView({ behavior: 'smooth' })
+        paragraphRefs.value[i + index - 1].scrollIntoView({ behavior: 'smooth' })
       }
       synth.speak(utterance)
     }
@@ -105,16 +105,8 @@ onMounted(async () => {
     <Button label="下一頁" severity="secondary" @click="nextPage" />
   </div>
   <div class="m-4 text-2xl">
-    <p
-      v-for="(paragraph, index) in paragraphs"
-      :ref="
-        (el) => {
-          paragraphRefs[index] = el
-        }
-      "
-      class="indent-8 my-6 select-none cursor-pointer"
-      @click="startSpeechSynthesis(index)"
-    >
+    <p v-for="(paragraph, index) in paragraphs" :ref="(el) => { paragraphRefs[index] = el }"
+      class="indent-8 my-6 select-none cursor-pointer" @click="startSpeechSynthesis(index)">
       <span v-if="speakingParagraph != index">{{ paragraph }}</span>
       <span v-else>
         <mark class="text-white bg-sky-800">{{ paragraph }}</mark>
