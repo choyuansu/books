@@ -21,6 +21,7 @@ const drawerVisible = ref(false)
 const speakingParagraph = ref(-1)
 const rate = ref(parseFloat(localStorage.getItem('rate')))
 const paragraphRefs = ref([])
+let wakeLock = null;
 
 const paragraphs = computed(() => {
   return chapter.value.content
@@ -50,12 +51,18 @@ const updateRate = (r) => {
   rate.value = r
   localStorage.setItem('rate', rate.value)
 }
-function startSpeechSynthesis(index) {
+async function startSpeechSynthesis(index) {
   if (synth.speaking) {
-    synth.cancel()
-    speakingParagraph.value = -1
+    stopSpeech()
     return
   }
+
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+  } catch (err) {
+    console.error(err)
+  }
+
   const voice = synth.getVoices().filter((voice) => voice.lang == 'zh-TW')[0]
   try {
     for (const [i, paragraph] of paragraphs.value.slice(index).entries()) {
@@ -65,7 +72,7 @@ function startSpeechSynthesis(index) {
       utterance.rate = rate.value / 10
       utterance.onstart = () => {
         speakingParagraph.value = i + index
-        paragraphRefs.value[i + index - 1].scrollIntoView({ behavior: 'smooth' })
+        paragraphRefs.value[Math.max(i + index - 1, 0)].scrollIntoView({ behavior: 'smooth' })
       }
       synth.speak(utterance)
     }
@@ -74,19 +81,27 @@ function startSpeechSynthesis(index) {
   }
 }
 
+function stopSpeech() {
+  synth.cancel()
+  speakingParagraph.value = -1
+  if (wakeLock) {
+    wakeLock.release().then(() => {
+      wakeLock = null;
+    });
+  }
+}
+
 watch(
   [() => route.params.bookId, () => route.params.chapterId],
   async ([newBookId, newChapterId]) => {
-    synth.cancel()
-    speakingParagraph.value = -1
+    stopSpeech()
     getChapterData(parseInt(newBookId), parseInt(newChapterId))
     db.books.update(parseInt(newBookId), { currentChapter: parseInt(newChapterId) })
     window.scrollTo(0, 0)
   },
 )
 onMounted(async () => {
-  synth.cancel()
-  speakingParagraph.value = -1
+  stopSpeech()
   getChapterData(parseInt(route.params.bookId), parseInt(route.params.chapterId))
   db.books.update(parseInt(route.params.bookId), {
     currentChapter: parseInt(route.params.chapterId),
