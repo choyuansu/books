@@ -75,7 +75,7 @@ async function startSpeechSynthesis(index) {
         paragraphRefs.value[Math.max(i + index - 1, 0)].scrollIntoView({ behavior: 'smooth' })
       }
       utterance.onend = () => {
-        if (wakeLock) {
+        if (!synth.speaking && !synth.pending && wakeLock) {
           wakeLock.release().then(() => {
             wakeLock = null;
           });
