@@ -91,6 +91,11 @@ async function startSpeechSynthesis(index) {
 function stopSpeech() {
   synth.cancel()
   speakingParagraph.value = -1
+  if (wakeLock) {
+    wakeLock.release().then(() => {
+      wakeLock = null;
+    });
+  }
 }
 
 watch(
