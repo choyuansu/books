@@ -74,6 +74,13 @@ async function startSpeechSynthesis(index) {
         speakingParagraph.value = i + index
         paragraphRefs.value[Math.max(i + index - 1, 0)].scrollIntoView({ behavior: 'smooth' })
       }
+      utterance.onend = () => {
+        if (wakeLock) {
+          wakeLock.release().then(() => {
+            wakeLock = null;
+          });
+        }
+      }
       synth.speak(utterance)
     }
   } catch (err) {
@@ -84,11 +91,6 @@ async function startSpeechSynthesis(index) {
 function stopSpeech() {
   synth.cancel()
   speakingParagraph.value = -1
-  if (wakeLock) {
-    wakeLock.release().then(() => {
-      wakeLock = null;
-    });
-  }
 }
 
 watch(
