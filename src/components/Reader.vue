@@ -72,7 +72,7 @@ async function startSpeechSynthesis(index) {
       utterance.rate = rate.value / 10
       utterance.onstart = () => {
         speakingParagraph.value = i + index
-        paragraphRefs.value[Math.max(i + index - 1, 0)].scrollIntoView({ behavior: 'smooth' })
+        paragraphRefs.value[Math.max(i + index - 1, 0)].scrollIntoView({ behavior: 'smooth', block: "end", inline: "nearest" })
       }
       utterance.onend = () => {
         if (!synth.speaking && !synth.pending && wakeLock) {
